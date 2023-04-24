@@ -19,11 +19,17 @@ trait Fixed {
     fn from_felt(val: felt252) -> FixedType;
     fn from_unscaled_felt(val: felt252) -> FixedType;
 
+    // constants
+    fn zero() -> FixedType;
+    fn one() -> FixedType;
+
     // Math
     fn abs(self: FixedType) -> FixedType;
     fn ceil(self: FixedType) -> FixedType;
     fn floor(self: FixedType) -> FixedType;
     fn round(self: FixedType) -> FixedType;
+    fn mul_sign(self: FixedType, sign: bool) -> FixedType;
+    fn mul_u128(self: FixedType, rhs: u128) -> FixedType;
 }
 
 impl FixedPrint of PrintTrait<FixedType> {
@@ -51,6 +57,14 @@ impl FixedImpl of Fixed {
         return Fixed::from_felt(val * ONE);
     }
 
+    fn zero() -> FixedType {
+        Fixed::new_unscaled(0_u128, false)
+    }
+
+    fn one() -> FixedType {
+        Fixed::new_unscaled(1_u128, false)
+    }
+
     fn abs(self: FixedType) -> FixedType {
         return abs(self);
     }
@@ -65,6 +79,14 @@ impl FixedImpl of Fixed {
 
     fn round(self: FixedType) -> FixedType {
         return round(self);
+    }
+    
+    fn mul_sign(self: FixedType, sign: bool) -> FixedType {
+        return FixedType { mag: self.mag, sign: self.sign^sign };
+    }
+
+    fn mul_u128(self: FixedType, rhs: u128) -> FixedType {
+        return FixedType { mag: self.mag * rhs, sign: self.sign };
     }
 }
 
