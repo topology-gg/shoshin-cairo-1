@@ -6,25 +6,12 @@ use shoshin_cairo_1::numerics::Fixed;
 use shoshin_cairo_1::numerics::FixedType;
 use shoshin_cairo_1::numerics;
 
-fn gravity_acc() -> FixedType {
-    FixedType::new(2100_u128, true)
-}
-
-const DELTA_SCALE: u128 = numerics::ONE_u128 / 10_u128;
-fn delta_scale() -> FixedType {
-    FixedType::new(DELTA_SCALE, false)
-}
-
-fn x_max() -> FixedType {
-    FixedType::new(400_u128, false)
-}
-
-fn x_min() -> FixedType {
-    FixedType::new(400_u128, true)
-}
+const DELTA_SCALE: u128 = 1844674407370955161_u128; // numerics::ONE_u128 / 10_u128;
+const GRAVITY_ACC: u128 = 38738162554790058393600_u128; // numerics::ONE_u128 * 2100_u128;
+const X_LIMIT: u128 = 7378697629483820646400_u128; // numerics::ONE_u128 * 400_u128;
 
 fn abs_value(x: FixedType) -> FixedType {
-    if (x < FixedType::zero()) {
+    if (x < Fixed::zero()) {
         x.neg()
     } else {
         x
@@ -120,45 +107,45 @@ impl AntocPhysics of CharacterPhysics::<Antoc> {
     // Dynamics
     // Note: https://github.com/starkware-libs/cairo/pull/2563
     fn MAX_VEL_MOVE_FP() -> FixedType {
-        FixedType::new(100_u128, false)
+        Fixed::new(100_u128, false)
     }
     fn MIN_VEL_MOVE_FP() -> FixedType {
-        FixedType::new(100_u128, true)
+        Fixed::new(100_u128, true)
     }
 
     fn MAX_VEL_DASH_FP() -> FixedType {
-        FixedType::new(900_u128, false)
+        Fixed::new(900_u128, false)
     }
     fn MIN_VEL_DASH_FP() -> FixedType {
-        FixedType::new(900_u128, true)
+        Fixed::new(900_u128, true)
     }
 
     fn DASH_VEL_FP() -> FixedType {
-        FixedType::new(0_u128, false)
+        Fixed::new(0_u128, false)
     }
 
     fn MOVE_ACC_FP() -> FixedType {
-        FixedType::new(300_u128, false)
+        Fixed::new(300_u128, false)
     }
     fn DASH_ACC_FP() -> FixedType {
-        FixedType::new(900_u128, false)
+        Fixed::new(900_u128, false)
     }
 
     fn KNOCK_VEL_X_FP() -> FixedType {
-        FixedType::new(150_u128, false)
+        Fixed::new(150_u128, false)
     }
     fn KNOCK_VEL_Y_FP() -> FixedType {
-        FixedType::new(400_u128, false)
+        Fixed::new(400_u128, false)
     }
 
     fn DEACC_FP() -> FixedType {
-        FixedType::new(10000_u128, false)
+        Fixed::new(10000_u128, false)
     }
 
     // Dimension
 
     fn BODY_KNOCKED_ADJUST_W() -> FixedType {
-        FixedType::zero() // TODO // Self::BODY_KNOCKED_LATE_HITBOX_W - Self::BODY_HITBOX_W;
+        Fixed::zero() // TODO // Self::BODY_KNOCKED_LATE_HITBOX_W - Self::BODY_HITBOX_W;
     }
 
     // body state
@@ -198,8 +185,8 @@ fn update_pos(
     acc_next: Vec2,
 ) -> PhysicsState {
     // euler_forward_pos_no_hitbox
-    let delta_pos_x = vel_next.x * delta_scale();
-    let delta_pos_y = vel_next.y * delta_scale();
+    let delta_pos_x = vel_next.x * Fixed::new(DELTA_SCALE, false);
+    let delta_pos_y = vel_next.y * Fixed::new(DELTA_SCALE, false);
     
     return PhysicsState{
         pos: Vec2{x: pos.x + delta_pos_x, y: pos.y + delta_pos_y},
@@ -230,67 +217,67 @@ fn euler_forward_no_hitbox<C, impl Physics: CharacterPhysics::<C>>(mut character
 
     if (character.is_in_move_forward()) {
         let acc_x = Physics::MOVE_ACC_FP().mul_sign(!character.dir());
-        let acc_y = FixedType::zero();
+        let acc_y = Fixed::zero();
         let vel_fp_next = update_vel(physics_state.vel_fp, Vec2{ x: acc_x, y: acc_y }, Physics::MAX_VEL_MOVE_FP(), Physics::MIN_VEL_MOVE_FP());
         return update_pos(physics_state.pos, vel_fp_next, Vec2{ x: acc_x, y: acc_y });
     }
     
     if (character.is_in_move_backward()) {
         let acc_fp_x = Physics::MOVE_ACC_FP().mul_sign(character.dir());
-        let acc_fp_y = FixedType::zero();
+        let acc_fp_y = Fixed::zero();
         let vel_fp_next = update_vel(physics_state.vel_fp, Vec2{ x: acc_fp_x, y: acc_fp_y }, Physics::MAX_VEL_MOVE_FP(), Physics::MIN_VEL_MOVE_FP());
         return update_pos(physics_state.pos, vel_fp_next, Vec2{ x: acc_fp_x, y: acc_fp_y });
     } 
     
     if (character.is_in_dash_forward()) {
         let vel = Physics::DASH_VEL_FP().mul_sign(!character.dir());
-        let vel_fp_next = if (character.counter() == FixedType::one()) {
-            Vec2{x: vel, y: FixedType::zero()}
+        let vel_fp_next = if (character.counter() == 1_u128) {
+            Vec2{x: vel, y: Fixed::zero()}
         } else {
-            Vec2{x: FixedType::zero(), y: FixedType::zero()}
+            Vec2{x: Fixed::zero(), y: Fixed::zero()}
         };
-        let acc_fp_x = FixedType::zero();
-        let acc_fp_y = FixedType::zero();
+        let acc_fp_x = Fixed::zero();
+        let acc_fp_y = Fixed::zero();
         return update_pos(physics_state.pos, vel_fp_next, Vec2{ x: acc_fp_x, y: acc_fp_y });
     } 
     
     if (character.is_in_dash_backward()) {
         let vel = Physics::DASH_VEL_FP().mul_sign(character.dir());
-        let vel_fp_next = if (character.counter() == FixedType::one()) {
-            Vec2{x: vel, y: FixedType::zero()}
+        let vel_fp_next = if (character.counter() == 1_u128) {
+            Vec2{x: vel, y: Fixed::zero()}
         } else {
-            Vec2{x: FixedType::zero(), y: FixedType::zero()}
+            Vec2{x: Fixed::zero(), y: Fixed::zero()}
         };
-        let acc_fp_x = FixedType::zero();
-        let acc_fp_y = FixedType::zero();
-        return update_pos(physics_state.pos, vel_fp_next, Vec2{x: FixedType::zero(), y: FixedType::zero()});
+        let acc_fp_x = Fixed::zero();
+        let acc_fp_y = Fixed::zero();
+        return update_pos(physics_state.pos, vel_fp_next, Vec2{x: Fixed::zero(), y: Fixed::zero()});
     }
 
     if (character.is_in_knocked()) {
         let (vel, acc) = if (character.counter() == 0_u128) {
             let vel_fp_y = Physics::KNOCK_VEL_Y_FP();
             let vel_fp_x = Physics::KNOCK_VEL_X_FP().mul_sign(character.dir());
-            (Vec2{x: vel_fp_x, y: vel_fp_y}, Vec2{x: FixedType::zero(), y: FixedType::zero()})
+            (Vec2{x: vel_fp_x, y: vel_fp_y}, Vec2{x: Fixed::zero(), y: Fixed::zero()})
         } else {
             let vel_x = if (character.counter() == 9_u128) {
-                FixedType::zero();
+                Fixed::zero();
             } else {
                 physics_state.vel_fp.x;
             };
             let vel_y = physics_state.vel_fp.y;
-            let acc_x = FixedType::zero();
-            let acc_y = gravity_acc();
+            let acc_x = Fixed::zero();
+            let acc_y = Fixed::new(GRAVITY_ACC, true);
             (Vec2{x: vel_x, y: vel_y}, Vec2{x: acc_x, y: acc_y})
         };
-        let vel_next = update_vel_dash(physics_state.vel_fp, acc.x, acc.y);
+        let vel_next = update_vel(physics_state.vel_fp, Vec2{x: acc.x, y: acc.y}, Physics::MAX_VEL_DASH_FP(), Physics::MIN_VEL_DASH_FP());
         return update_pos(physics_state.pos, vel_next, acc);
     }
 
     else {
         return PhysicsState {
             pos: physics_state.pos,
-            vel_fp: Vec2{x: FixedType::zero(), y: FixedType::zero()},
-            acc_fp: Vec2{x: FixedType::zero(), y: FixedType::zero()},
+            vel_fp: Vec2{x: Fixed::zero(), y: Fixed::zero()},
+            acc_fp: Vec2{x: Fixed::zero(), y: Fixed::zero()},
         };
     }
 
@@ -300,8 +287,8 @@ fn euler_forward_no_hitbox<C, impl Physics: CharacterPhysics::<C>>(mut character
 fn euler_forward_vel_no_hitbox(
     vel_fp: Vec2, acc_fp: Vec2, max_vel_x_fp: FixedType, min_vel_x_fp: FixedType
 ) -> Vec2 {
-    let delta_vel_x = acc_fp.x * DT_FP;
-    let delta_vel_y = acc_fp.y * DT_FP;
+    let delta_vel_x = acc_fp.x * Fixed::new(DELTA_SCALE, false);
+    let delta_vel_y = acc_fp.y * Fixed::new(DELTA_SCALE, false);
 
     let vel_fp_next_x = cap_fp(vel_fp.x + delta_vel_x, max_vel_x_fp, min_vel_x_fp);
     let vel_fp_next_y = vel_fp.y + delta_vel_y;
@@ -339,14 +326,14 @@ fn euler_forward_consider_hitbox(
     agent_0_knocked: bool,
     agent_1_knocked: bool,
 ) -> (PhysicsState, PhysicsState) {
-    let mut y_0_ground_handled: FixedType = FixedType::zero();
-    let mut y_1_ground_handled: FixedType = FixedType::zero();
-    let mut vy_fp_0_ground_handled: FixedType = FixedType::zero();
-    let mut vy_fp_1_ground_handled: FixedType = FixedType::zero();
+    let mut y_0_ground_handled: FixedType = Fixed::zero();
+    let mut y_1_ground_handled: FixedType = Fixed::zero();
+    let mut vy_fp_0_ground_handled: FixedType = Fixed::zero();
+    let mut vy_fp_1_ground_handled: FixedType = Fixed::zero();
 
     if (agent_0_ground) {
-        y_0_ground_handled = FixedType::zero();
-        vy_fp_0_ground_handled = FixedType::zero();
+        y_0_ground_handled = Fixed::zero();
+        vy_fp_0_ground_handled = Fixed::zero();
     } else {
         y_0_ground_handled = physics_state_cand_0.pos.y;
         vy_fp_0_ground_handled = physics_state_cand_0.vel_fp.y
@@ -371,35 +358,32 @@ fn euler_forward_consider_hitbox(
     // Back the character bodies off from candidate positions using reversed candidate velocities;
     //
 
-    let mut move_0: FixedType = FixedType::zero();
-    let mut move_1: FixedType = FixedType::zero();
-    let mut abs_relative_vx_fp: FixedType = FixedType::zero();
+    let mut move_0: FixedType = Fixed::zero();
+    let mut move_1: FixedType = Fixed::zero();
+    let mut abs_relative_vx_fp: FixedType = Fixed::zero();
 
-    if (is_cap_fp(physics_state_cand_0.pos.x, x_max(), x_min())) {
-        move_0 = FixedType::zero();
-        move_1 = FixedType::one();
+    if (is_cap_fp(physics_state_cand_0.pos.x, Fixed::new(X_LIMIT, false), Fixed::new(X_LIMIT, true))) {
+        move_0 = Fixed::zero();
+        move_1 = Fixed::one();
         abs_relative_vx_fp = abs_value(physics_state_cand_1.vel_fp.x);
-    } else if (is_cap_fp(physics_state_cand_1.pos.x, x_max(), x_min())) {
-        move_0 = FixedType::one();
-        move_1 = FixedType::zero();
+    } else if (is_cap_fp(physics_state_cand_1.pos.x, Fixed::new(X_LIMIT, false), Fixed::new(X_LIMIT, true))) {
+        move_0 = Fixed::one();
+        move_1 = Fixed::zero();
         abs_relative_vx_fp = abs_value(physics_state_cand_0.vel_fp.x);
     } else {
-        move_0 = FixedType::one();
-        move_1 = FixedType::one();
+        move_0 = Fixed::one();
+        move_1 = Fixed::one();
         abs_relative_vx_fp = abs_value(physics_state_cand_1.vel_fp.x)
     }
 
     // note: body_dim_i contains the current body dimension
     // fix direction of backoff based on how agents are placed
     // TODO: comparison needs traits
-    let distance = if (physics_state_1.pos.x > physics_state_0.pos.x) {
-        FixedType::new(body_dim_0.x - (physics_state_cand_1.pos.x - physics_state_cand_0.pos.x), true)
+    let (abs_distance, direction) = if (physics_state_1.pos.x > physics_state_0.pos.x) {
+        (body_dim_0.x - (physics_state_cand_1.pos.x - physics_state_cand_0.pos.x), true)
     } else {
-        FixedType::new(body_dim_1.x - (physics_state_cand_0.pos.x - physics_state_cand_1.pox.x), false)
+        (body_dim_1.x - (physics_state_cand_0.pos.x - physics_state_cand_1.pos.x), false)
     };
-
-    let direction = distance.sign;
-    let abs_distance = distance.abs();
 
     // abs(physics_state_cand_0.vel_fp.x) = sign_vx_cand_0 * physics_state_cand_0.vel_fp.x;
     // direction = -1 if 1 to the right of 0 else 1
@@ -409,13 +393,13 @@ fn euler_forward_consider_hitbox(
     let vx_fp_cand_reversed_1: FixedType = physics_state_cand_1.vel_fp.x.mul_sign(!(direction^sign_vx_cand_1));
     // let abs_distance_fp_fp = abs_distance * SCALE_FP * SCALE_FP;
 
-    let mut back_off_x_0_scaled: FixedType = FixedType::zero();
-    let mut back_off_x_1_scaled: FixedType = FixedType::zero();
+    let mut back_off_x_0_scaled: FixedType = Fixed::zero();
+    let mut back_off_x_1_scaled: FixedType = Fixed::zero();
 
-    // avoid division by 0 if abs_relative_vx_fp == FixedType::zero() 
+    // avoid division by 0 if abs_relative_vx_fp == Fixed::zero() 
     // use direction in order to set the sign for back_off_x_i_scaled
-    if (abs_relative_vx_fp == FixedType::zero()) {
-        let abs_distane_fp_half = abs_distance / FixedType::new(2_u128, false);
+    if (abs_relative_vx_fp == Fixed::zero()) {
+        let abs_distance_fp_half = abs_distance / Fixed::new(2_u128, false);
         // let abs_distance_fp_half = abs_distance_fp_fp / 2;
         back_off_x_0_scaled = abs_distance_fp_half * (move_0.mul_u128(2_u128) - move_1).mul_sign(direction);
         back_off_x_1_scaled = abs_distance_fp_half * (move_1.mul_u128(2_u128) - move_0).mul_sign(!direction);
@@ -441,17 +425,17 @@ fn euler_forward_consider_hitbox(
     //    RANGE_CHECK_BOUND,
     //);
 
-    let mut vx_fp_0_final: FixedType = FixedType::zero();
-    let mut vx_fp_1_final: FixedType = FixedType::one();
+    let mut vx_fp_0_final: FixedType = Fixed::zero();
+    let mut vx_fp_1_final: FixedType = Fixed::one();
     if (agent_0_knocked) {
         vx_fp_0_final = physics_state_cand_0.vel_fp.x;
     } else {
-        vx_fp_0_final = FixedType::zero();
+        vx_fp_0_final = Fixed::zero();
     }
     if (agent_1_knocked) {
         vx_fp_1_final = physics_state_cand_1.vel_fp.x;
     } else {
-        vx_fp_1_final = FixedType::zero();
+        vx_fp_1_final = Fixed::zero();
     }
 
     let physics_state_fwd_0: PhysicsState = PhysicsState {
