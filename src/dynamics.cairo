@@ -12,7 +12,7 @@ const X_LIMIT: u128 = 7378697629483820646400_u128; // numerics::ONE_u128 * 400_u
 
 fn abs_value(x: FixedType) -> FixedType {
     if (x < Fixed::zero()) {
-        x.neg()
+        -x
     } else {
         x
     }
@@ -31,6 +31,7 @@ struct Vec2 {
     y: FixedType,
 }
 
+#[derive(Copy, Drop)]
 struct PhysicsState {
     pos: Vec2,
     vel_fp: Vec2,
@@ -212,7 +213,7 @@ fn update_vel(
 }
 
 
-fn euler_forward_no_hitbox<C, impl Physics: CharacterPhysics::<C>>(mut character: C, physics_state: PhysicsState) -> PhysicsState {
+fn euler_forward_no_hitbox<C, impl Physics: CharacterPhysics::<C>, impl CharacterDrop: Drop::<C>>(mut character: C, physics_state: PhysicsState) -> PhysicsState {
     // TODO: cap logic not yet added
 
     if (character.is_in_move_forward()) {
@@ -260,9 +261,9 @@ fn euler_forward_no_hitbox<C, impl Physics: CharacterPhysics::<C>>(mut character
             (Vec2{x: vel_fp_x, y: vel_fp_y}, Vec2{x: Fixed::zero(), y: Fixed::zero()})
         } else {
             let vel_x = if (character.counter() == 9_u128) {
-                Fixed::zero();
+                Fixed::zero()
             } else {
-                physics_state.vel_fp.x;
+                physics_state.vel_fp.x
             };
             let vel_y = physics_state.vel_fp.y;
             let acc_x = Fixed::zero();
